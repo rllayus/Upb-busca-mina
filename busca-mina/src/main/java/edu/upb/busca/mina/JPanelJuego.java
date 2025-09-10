@@ -4,27 +4,34 @@
  */
 package edu.upb.busca.mina;
 
-import java.awt.Color;
-import java.awt.Graphics;
+import edu.upb.busca.mina.bl.BuscaminasFuncional;
+import edu.upb.busca.mina.bl.Celda;
+import edu.upb.busca.mina.bl.EstadoJuego;
+import edu.upb.busca.mina.bl.Tablero;
+
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 
 /**
- *
  * @author rlaredo
  */
 public class JPanelJuego extends javax.swing.JPanel implements MouseListener {
-
-    private final int cantidadFila = 10;
-    private final int cantidadColumna = 10;
+    private static int FILAS = 10;
+    private static int COLUMNAS = 10;
+    private Tablero estadoActual;
+    private static int MINAS = 10;
 
     /**
      * Creates new form JPanelJuego
      */
-    public JPanelJuego() {
+    public JPanelJuego(int filas, int columnas, int minas) {
         initComponents();
+        FILAS = filas;
+        COLUMNAS = columnas;
+        MINAS = minas;
+        estadoActual = BuscaminasFuncional.crearTableroInicial(FILAS, COLUMNAS, MINAS);
         this.addMouseListener(this);
     }
 
@@ -40,12 +47,12 @@ public class JPanelJuego extends javax.swing.JPanel implements MouseListener {
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 596, Short.MAX_VALUE)
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGap(0, 596, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
-            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 443, Short.MAX_VALUE)
+                layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                        .addGap(0, 443, Short.MAX_VALUE)
         );
     }// </editor-fold>//GEN-END:initComponents
 
@@ -55,33 +62,7 @@ public class JPanelJuego extends javax.swing.JPanel implements MouseListener {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        dibujarTablero(g);
-    }
-
-    private void dibujarTablero(Graphics g) {
-
-        int anchoTablero = getWidth();
-        int altoTablero = getHeight();
-
-        // Calcular el tamaño de cada celda para que sea cuadrada y se ajuste al panel
-        int tamanioCelda = Math.min(anchoTablero / cantidadColumna, altoTablero / cantidadFila);
-
-        // Dibujar las celdas
-        for (int fila = 0; fila < cantidadFila; fila++) {
-            for (int columna = 0; columna < cantidadColumna; columna++) {
-                // Calcular las coordenadas de la celda actual
-                int x = columna * tamanioCelda;
-                int y = fila * tamanioCelda;
-
-                // Dibujar el borde de la celda
-                g.setColor(Color.GRAY); // Color del borde
-                g.drawRect(x, y, tamanioCelda, tamanioCelda);
-
-                // Rellenar la celda con un color de fondo
-                g.setColor(Color.LIGHT_GRAY); // Color del fondo de la celda
-                g.fillRect(x + 1, y + 1, tamanioCelda - 1, tamanioCelda - 1);
-            }
-        }
+        dibujarTablero(g, estadoActual);
     }
 
     @Override
@@ -97,28 +78,7 @@ public class JPanelJuego extends javax.swing.JPanel implements MouseListener {
     @Override
     public void mouseReleased(MouseEvent e) {
         if (SwingUtilities.isLeftMouseButton(e) || SwingUtilities.isRightMouseButton(e)) {
-            System.out.println("Click");
-            // Calcular el tamaño de la celda, igual que en el método dibujarTablero()
-            int tamanioCelda = Math.min(getWidth() / cantidadColumna, getHeight() / cantidadFila);
-
-            // Obtener las coordenadas X e Y del clic
-            int x = e.getX();
-            int y = e.getY();
-            System.out.println("Click");
-            // Validar que el clic esté dentro del área del tablero
-            if (x >= 0 && x < cantidadColumna * tamanioCelda && y >= 0 && y < cantidadFila * tamanioCelda) {
-                System.out.println("Click X Y");
-                // Calcular la fila y la columna de la celda clickeada
-                int fila = y / tamanioCelda;
-                int columna = x / tamanioCelda;
-
-                // Aquí iría la lógica del juego. Por ejemplo, revelar la celda.
-                // Por ahora, solo mostraremos un mensaje.
-                JOptionPane.showMessageDialog(null, "Celda clickeada: Fila: " + fila + ", Columna: " + columna, "Info", JOptionPane.INFORMATION_MESSAGE);
-
-                // Repintar el tablero para reflejar los cambios (si los hubiera)
-                repaint();
-            }
+            manejarClic(e);
         }
     }
 
@@ -130,4 +90,106 @@ public class JPanelJuego extends javax.swing.JPanel implements MouseListener {
     public void mouseExited(MouseEvent e) {
     }
 
+
+    public void dibujarTablero(Graphics g, Tablero tablero) {
+        // Definir los colores y fuentes para el dibujo
+        final Color COLOR_CELDA_CUBIERTA = Color.LIGHT_GRAY;
+        final Color COLOR_CELDA_REVELADA = new Color(220, 220, 220); // Gris claro
+        final Color COLOR_MINA = Color.BLACK;
+        final Color COLOR_BANDERA = Color.RED;
+        final Font FUENTE_NUMERO = new Font("Arial", Font.BOLD, 18);
+
+        int tamanioCelda = Math.min(getWidth() / tablero.columnas(), getHeight() / tablero.filas());
+
+        // Iterar sobre cada celda del tablero
+        for (int fila = 0; fila < tablero.filas(); fila++) {
+            for (int columna = 0; columna < tablero.columnas(); columna++) {
+                Celda celda = tablero.celdas()[fila][columna];
+
+                // Coordenadas de la celda
+                int x = columna * tamanioCelda;
+                int y = fila * tamanioCelda;
+
+                // Dibujar el fondo de la celda
+                if (celda.estaRevelada()) {
+                    g.setColor(COLOR_CELDA_REVELADA);
+                } else {
+                    g.setColor(COLOR_CELDA_CUBIERTA);
+                }
+                g.fillRect(x, y, tamanioCelda, tamanioCelda);
+
+                // Dibujar el borde de la celda
+                g.setColor(Color.GRAY);
+                g.drawRect(x, y, tamanioCelda, tamanioCelda);
+
+                // Dibujar el contenido de la celda si está revelada
+                if (celda.estaRevelada()) {
+                    if (celda.esMina()) {
+                        g.setColor(COLOR_MINA);
+                        g.fillOval(x + tamanioCelda / 4, y + tamanioCelda / 4, tamanioCelda / 2, tamanioCelda / 2);
+                    } else if (celda.minasVecinas() > 0) {
+                        g.setColor(getColorNumero(celda.minasVecinas()));
+                        g.setFont(FUENTE_NUMERO);
+                        String numero = String.valueOf(celda.minasVecinas());
+                        int centroX = x + (tamanioCelda - g.getFontMetrics().stringWidth(numero)) / 2;
+                        int centroY = y + (tamanioCelda + g.getFontMetrics().getAscent()) / 2;
+                        g.drawString(numero, centroX, centroY);
+                    }
+                } else if (celda.tieneBandera()) {
+                    // Dibujar una bandera si la celda tiene una
+                    g.setColor(COLOR_BANDERA);
+                    g.fillRect(x + tamanioCelda / 4, y + tamanioCelda / 4, tamanioCelda / 2, tamanioCelda / 2);
+                }
+            }
+        }
+    }
+
+    // Método auxiliar para obtener el color del número de minas vecinas
+    private Color getColorNumero(int numero) {
+        return switch (numero) {
+            case 1 -> Color.BLUE;
+            case 2 -> Color.GREEN.darker();
+            case 3 -> Color.RED;
+            case 4 -> new Color(128, 0, 128); // Púrpura
+            case 5 -> Color.ORANGE.darker();
+            case 6 -> Color.CYAN.darker();
+            case 7 -> Color.MAGENTA.darker();
+            case 8 -> Color.BLACK;
+            default -> Color.BLACK;
+        };
+    }
+
+
+    private void manejarClic(MouseEvent e) {
+        // 1. Calcular el tamaño de la celda
+        int tamanioCelda = Math.min(getWidth() / estadoActual.columnas(), getHeight() / estadoActual.filas());
+
+        // 2. Obtener la fila y columna del clic
+        int x = e.getX();
+        int y = e.getY();
+
+        // Verificar que el clic esté dentro del tablero
+        if (x >= 0 && x < estadoActual.columnas() * tamanioCelda && y >= 0 && y < estadoActual.filas() * tamanioCelda) {
+            int fila = y / tamanioCelda;
+            int columna = x / tamanioCelda;
+
+            // 3. Aplicar la lógica funcional según el botón del ratón
+            if (SwingUtilities.isLeftMouseButton(e)) {
+                // Clic izquierdo: Revelar la celda
+                estadoActual = BuscaminasFuncional.revelarCelda(estadoActual, fila, columna);
+            } else if (SwingUtilities.isRightMouseButton(e)) {
+                // Clic derecho: Colocar o quitar bandera
+                estadoActual = BuscaminasFuncional.colocarBandera(estadoActual, fila, columna);
+            }
+
+            // 4. Repintar la UI para mostrar el nuevo estado del juego
+            repaint();
+
+            // 5. Verificar si el juego terminó
+            if (estadoActual.estado() == EstadoJuego.PERDIDO) {
+                // Lógica para mostrar el mensaje de "Game Over"
+                JOptionPane.showMessageDialog(this, "¡Has perdido!", "Fin del juego", JOptionPane.ERROR_MESSAGE);
+            }
+        }
+    }
 }
